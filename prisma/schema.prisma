@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  walletAddress String   @unique // Solana wallet address
+  username      String   @unique
+  email         String?  @unique
+  avatar        String?
+  isCreator     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  creatorProfile   CreatorProfile?
+  streams          Stream[]         @relation("StreamCreator")
+  paymentsMade     Payment[]        @relation("PaymentPayer")
+  paymentsReceived Payment[]        @relation("PaymentCreator")
+  analyticsEvents  AnalyticsEvent[]
+
+  @@index([walletAddress])
+  @@index([username])
+  @@index([isCreator])
+  @@map("users")
+}
+
+model CreatorProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  channelName        String
+  defaultStreamTitle String?
+  category           String?
+  bio                String?  @db.Text
+  socialLinks        Json? // Store social media links as JSON
+  paymentAddress     String // Solana address for receiving payments
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([channelName])
+  @@map("creator_profiles")
+}
+
+model Stream {
+  id              String    @id @default(uuid())
+  roomName        String    @unique // LiveKit room name
+  creatorId       String
+  title           String    @db.VarChar(100)
+  description     String?   @db.VarChar(500)
+  category        String?
+  thumbnail       String?
+  isLive          Boolean   @default(false)
+  viewerCount     Int       @default(0)
+  price           Decimal?  @db.Decimal(10, 2) // Price in USDC (e.g., 0.10)
+  paymentRequired Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  startedAt       DateTime?
+  endedAt         DateTime?
+  metadata        Json? // LiveKit room metadata
+
+  // Relations
+  creator         User             @relation("StreamCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  payments        Payment[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([isLive])
+  @@index([viewerCount])
+  @@index([createdAt])
+  @@index([category])
+  @@index([title])
+  @@index([creatorId])
+  @@map("streams")
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  streamId        String
+  payerId         String
+  creatorId       String
+  amount          Decimal  @db.Decimal(10, 2) // Amount in USDC (e.g., 0.10)
+  amountAtomic    BigInt // Amount in atomic units (amount * 1_000_000 for USDC)
+  transactionHash String   @unique
+  network         String // e.g., "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+  asset           String   @default("USDC")
+  assetMint       String? // USDC mint address
+  status          String   @default("pending") // "pending" | "completed" | "failed"
+  createdAt       DateTime @default(now())
+
+  // Relations
+  stream  Stream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  payer   User   @relation("PaymentPayer", fields: [payerId], references: [id])
+  creator User   @relation("PaymentCreator", fields: [creatorId], references: [id])
+
+  @@index([streamId])
+  @@index([payerId])
+  @@index([creatorId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([transactionHash])
+  @@map("payments")
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  streamId  String
+  userId    String?
+  eventType String // "view" | "payment" | "join" | "leave"
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  // Relations
+  stream Stream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([streamId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@map("analytics_events")
+}
