@@ -1,51 +1,193 @@
-# Livestream with LiveKit
+# StreamX402
 
-> [!TIP]
-> Try a live demo here 👉 [livestream.livekit.io](https://livestream.livekit.io)
+A decentralized live streaming platform built with Next.js, LiveKit, and Solana blockchain integration. StreamX402 enables creators to monetize their streams using USDC payments on Solana, powered by the x402 payment protocol.
 
-Today most livestreams experience a 5–30 second lag, which is evident in the delay it takes for streamers to respond to chats. Those streams use HLS, which leverages existing CDNs by uploading 5–30 second video chunks, which clients download one chunk at a time. HLS is hugely scalable, but it comes with latency.
+## Features
 
-LiveKit is a sort of WebRTC CDN, achieving sub-100ms latency for audiences of 1000 or 100,000 by streaming video over backbone Internet connections and only going over the public Internet for the last mile (that is, delivery to connected clients). This enables true real-time, large-scale events, where anyone and everyone can participate.
+- **Real-time Streaming**: Sub-100ms latency streaming powered by LiveKit WebRTC infrastructure
+- **Solana Wallet Integration**: Seamless wallet connection using Wallet Standard (supports Phantom, Solflare, and other Solana wallets)
+- **Crypto Payments**: Pay-per-view streams using USDC on Solana devnet
+- **x402 Payment Protocol**: HTTP 402 Payment Required integration for automated payment flows
+- **Creator Dashboard**: Analytics, earnings tracking, and stream management
+- **Interactive Features**: Live chat, reactions, and audience participation
+- **Flexible Broadcasting**: Stream from browser or OBS Studio via LiveKit Ingress
 
-Built with [Next.js](https://nextjs.org/), [LiveKit Cloud](https://livekit.io/cloud), and [Radix UI](https://www.radix-ui.com/), this app is a full-stack web application that serves as a browser frontend application and as the backend API server for the clients. As a streamer, you can pick from broadcasting from either the browser via camera and microphone or from [OBS Studio](https://obsproject.com/) using an [LiveKit Ingress](https://livekit.io/product/ingress) endpoint. The application also features the ability to summon viewers from the audience onto the stage similar to X Spaces and Clubhouse.
+## Tech Stack
+
+- **Frontend**: Next.js 16, React 19, TypeScript
+- **Streaming**: LiveKit Cloud
+- **Blockchain**: Solana (devnet), @solana/kit, @wallet-standard/react
+- **Payments**: x402 protocol, USDC
+- **Database**: PostgreSQL with Prisma ORM
+- **UI**: Radix UI, Tailwind CSS
+- **Authentication**: Wallet-based authentication
 
 ## Getting Started
 
-Clone the repo and install dependencies:
+### Prerequisites
 
-```
-git clone git@github.com:livekit-examples/livestream.git
-cd nextjs-livestream
+- Node.js 18+ 
+- PostgreSQL database
+- LiveKit Cloud account
+- Solana wallet (Phantom, Solflare, etc.)
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone git@github.com:gr4yha7/streamx402.git
+cd streamx402
 npm install
 ```
 
-Create a new LiveKit project at [https://cloud.livekit.io](). Then create a new key in your [project settings](). With the provided credentials, create a new .env.development file and fill out the values below:
+2. Set up environment variables:
 
-```
+Create a `.env` file in the root directory with the following variables:
+
+```bash
+# Site Configuration
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-LIVEKIT_WS_URL=<websocket URL starting with wss://>
-LIVEKIT_API_KEY=<api key>
-LIVEKIT_API_SECRET=<api secret>
+
+# LiveKit Configuration
+LIVEKIT_WS_URL=<your-livekit-websocket-url>
+LIVEKIT_API_KEY=<your-livekit-api-key>
+LIVEKIT_API_SECRET=<your-livekit-api-secret>
+
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/streamx402
+
+# Solana Configuration
+NEXT_PUBLIC_SOLANA_NETWORK=devnet
+NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=<optional-for-future-use>
 ```
 
-Then run the development server:
+3. Set up the database:
+
+```bash
+npm run db:push
+```
+
+4. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-You can test it by opening [http://localhost:3000](http://localhost:3000) in a browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Deploy on Vercel
+## Usage
 
-This demo is a Next.js app. You can deploy to your Vercel account with one click:
+### For Viewers
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Flivekit-examples%2Fnextjs-livestream&env=NEXT_PUBLIC_SITE_URL,LIVEKIT_WS_URL,LIVEKIT_API_KEY,LIVEKIT_API_SECRET)
+1. Connect your Solana wallet using the "Connect Wallet" button
+2. Complete sign up with a username
+3. Browse live streams on the homepage
+4. Click on a stream to watch
+5. For paid streams, approve the USDC payment when prompted
 
-Refer to the [the Next.js deployment documentation](https://nextjs.org/docs/deployment) for more about deploying to a production environment.
+### For Creators
+
+1. Connect your Solana wallet and sign up
+2. Navigate to "Become Creator" to set up your channel
+3. Configure your channel name, category, and payment address
+4. Click "Go Live" to start streaming
+5. Set stream title and price (or make it free)
+6. Start broadcasting from your browser or OBS Studio
+
+## Architecture
+
+### Wallet Integration
+
+StreamX402 uses the Wallet Standard for Solana wallet connections, providing a unified interface for all compatible wallets. The custom `SolanaProvider` component manages wallet state and provides connection/disconnection functionality throughout the app.
+
+### Payment Flow
+
+1. Viewer requests access to a paid stream
+2. Server returns 402 Payment Required with payment requirements
+3. x402 client initiates USDC payment on Solana
+4. Payment is verified on-chain
+5. Access is granted and payment is recorded in the database
+
+### Database Schema
+
+- **User**: Wallet address, username, creator status
+- **CreatorProfile**: Channel information, payment address
+- **Stream**: Stream metadata, pricing, LiveKit room details
+- **Payment**: Transaction records, verification status
+
+## API Routes
+
+- `/api/auth/*` - Wallet-based authentication
+- `/api/streams/*` - Stream management and search
+- `/api/payments/*` - Payment initiation and verification
+- `/api/creator/*` - Creator dashboard and analytics
+- `/api/create_stream` - Start a new stream
+- `/api/join_stream` - Join as a viewer
+
+## Development
+
+### Database Migrations
+
+```bash
+# Generate Prisma client
+npm run db:generate
+
+# Push schema changes
+npm run db:push
+
+# Create migration
+npm run db:migrate
+
+# Open Prisma Studio
+npm run db:studio
+```
+
+### Project Structure
+
+```
+src/
+├── app/                    # Next.js app router pages
+│   ├── api/               # API routes
+│   ├── auth/              # Authentication pages
+│   ├── creator/           # Creator dashboard
+│   └── (stream)/          # Stream pages
+├── components/            # React components
+├── contexts/              # React contexts (auth, etc.)
+├── lib/                   # Utilities and configurations
+└── styles/                # Global styles
+```
+
+## Deployment
+
+This is a Next.js application that can be deployed to Vercel, Railway, or any Node.js hosting platform.
+
+### Environment Variables for Production
+
+Ensure all environment variables are set in your deployment platform, including:
+- LiveKit credentials
+- Database connection string
+- Solana network configuration (mainnet-beta for production)
+
+### Database
+
+Set up a PostgreSQL database and run migrations before deploying:
+
+```bash
+npm run db:push
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT
+
+## Acknowledgments
+
+- Built with [LiveKit](https://livekit.io/) for real-time streaming
+- Powered by [Solana](https://solana.com/) blockchain
+- Uses [x402](https://github.com/x402) payment protocol
+- UI components from [Radix UI](https://www.radix-ui.com/)
