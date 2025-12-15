@@ -54,7 +54,7 @@ function StartVideoButton() {
   );
 }
 
-function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
+function StreamContent({ onEndStream, showChat }: { onEndStream?: () => void; showChat?: boolean }) {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const connectionState = useConnectionState();
@@ -62,7 +62,7 @@ function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
   const localCameraTracks = useTracks([Track.Source.Camera], {
     onlySubscribed: false,
   }).filter((track) => track.participant.identity === localParticipant?.identity);
-  
+
   const microphoneTracks = useTracks([Track.Source.Microphone], {
     onlySubscribed: false,
   });
@@ -71,13 +71,14 @@ function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
   const viewerCount = participants.length - 1;
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full bg-black group">
       {/* Connection State Overlay */}
       {connectionState !== ConnectionState.Connected && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50">
           <div className="text-center text-white">
-            <div className="size-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
-            <p>Connecting to room...</p>
+            <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+            <p className="font-medium text-gray-400">Connecting to room...</p>
+            <p className="text-sm text-gray-500 mt-1">Start your camera to begin streaming</p>
           </div>
         </div>
       )}
@@ -95,13 +96,22 @@ function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
             ))}
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/20 to-blue-900/20">
-            <div className="text-center text-white/60">
-              <div className="size-24 rounded-full bg-white/10 flex items-center justify-center mb-4 mx-auto">
-                <span className="material-symbols-outlined text-6xl text-white/40">videocam_off</span>
+          <div className="w-full h-full flex items-center justify-center bg-zinc-900">
+            <div className="text-center text-gray-400">
+              <div className="w-16 h-16 border-4 border-t-primary border-gray-600 rounded-full animate-spin mb-4 mx-auto"></div>
+              <p className="font-medium">Waiting for video...</p>
+              <p className="text-sm mt-1">Start your camera to begin streaming</p>
+
+              <div className="mt-8 flex gap-6 justify-center">
+                <div className="flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-3xl">videocam_off</span>
+                  <span className="text-xs">Camera</span>
+                </div>
+                <div className="flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-3xl">mic_off</span>
+                  <span className="text-xs">Mic</span>
+                </div>
               </div>
-              <p className="text-lg mb-2 font-medium">Camera Off</p>
-              <p className="text-sm">Start your camera to begin streaming</p>
             </div>
           </div>
         )}
@@ -115,11 +125,30 @@ function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
       {/* Room Audio Renderer */}
       <RoomAudioRenderer />
 
-      {/* Stream Controls Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4">
+      {/* Live Badge & Viewer Count (Top Left) */}
+      <div className="absolute top-4 left-4 flex gap-2 z-10">
+        {connectionState === ConnectionState.Connected && (
+          <div className="px-2 py-1 bg-black/60 backdrop-blur-sm rounded text-xs font-mono text-gray-300 flex items-center gap-2 border border-white/10">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            LIVE
+          </div>
+        )}
+        <div className="px-2 py-1 bg-black/60 backdrop-blur-sm rounded text-xs font-mono text-gray-300 flex items-center gap-2 border border-white/10">
+          <span className="material-symbols-outlined text-sm">visibility</span>
+          {viewerCount > 0 ? viewerCount.toLocaleString() : '0'}
+        </div>
+        {localParticipant?.identity && (
+          <div className="px-2 py-1 bg-black/60 backdrop-blur-sm rounded text-xs font-mono text-purple-300 border border-purple-500/30">
+            {localParticipant.identity}
+          </div>
+        )}
+      </div>
+
+      {/* Stream Controls Overlay (Bottom) */}
+      {/* Hide controls when hovering specifically over the chat area to prevent intersection, or just keep them z-30 */}
+      <div className="absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4 opacity-100 transition-opacity duration-300">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {/* Connection Quality */}
             {localParticipant && (
               <ParticipantContextIfNeeded participant={localParticipant}>
                 <div className="flex items-center gap-2">
@@ -127,43 +156,24 @@ function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
                 </div>
               </ParticipantContextIfNeeded>
             )}
-            
-            {/* Live Status */}
-            {connectionState === ConnectionState.Connected && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/90 rounded-full">
-                <div className="size-2 bg-white rounded-full animate-pulse"></div>
-                <span className="text-white text-sm font-bold">LIVE</span>
-              </div>
-            )}
-
-            {/* Viewer Count */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-black/50 rounded-lg">
-              <span className="material-symbols-outlined text-white text-lg">visibility</span>
-              <span className="text-white text-sm font-medium">{viewerCount > 0 ? viewerCount.toLocaleString() : '0'}</span>
-            </div>
           </div>
 
           {/* Media Controls */}
           <div className="flex items-center gap-2">
-            {/* Video Toggle */}
-            <TrackToggle 
-              source={Track.Source.Camera} 
+            <TrackToggle
+              source={Track.Source.Camera}
               className="bg-white/10 hover:bg-white/20 text-white rounded-lg p-3 transition-colors"
-              aria-label="Toggle camera"
             >
               <span className="material-symbols-outlined">videocam</span>
             </TrackToggle>
-            
-            {/* Audio Toggle */}
-            <TrackToggle 
-              source={Track.Source.Microphone} 
+
+            <TrackToggle
+              source={Track.Source.Microphone}
               className="bg-white/10 hover:bg-white/20 text-white rounded-lg p-3 transition-colors"
-              aria-label="Toggle microphone"
             >
               <span className="material-symbols-outlined">mic</span>
             </TrackToggle>
 
-            {/* End Stream Button */}
             {onEndStream && (
               <button
                 onClick={(e) => {
@@ -171,7 +181,6 @@ function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
                   onEndStream();
                 }}
                 className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-4 py-3 transition-colors flex items-center gap-2 font-medium"
-                aria-label="End stream"
               >
                 <span className="material-symbols-outlined text-lg">stop</span>
                 <span className="hidden sm:inline">End Stream</span>
@@ -180,6 +189,17 @@ function StreamContent({ onEndStream }: { onEndStream?: () => void }) {
           </div>
         </div>
       </div>
+
+      {/* Chat Overlay */}
+      {showChat && (
+        <div className="absolute top-0 bottom-0 right-0 w-80 z-20 pointer-events-none flex flex-col">
+          {/* Gradient background for readability */}
+          <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/40 to-transparent pointer-events-none" />
+          <div className="flex-1 relative z-10 pointer-events-auto pb-16"> {/* pb-16 to avoid overlapping controls */}
+            <Chat variant="overlay" />
+          </div>
+        </div>
+      )}
 
       {/* Start Media Buttons (shown when not started) */}
       <StartVideoButton />
@@ -196,7 +216,7 @@ export function DashboardStreamPlayer({
   authToken,
   roomToken,
   serverUrl,
-  showChat = false,
+  showChat = true,
   onEndStream,
 }: DashboardStreamPlayerProps) {
   return (
@@ -207,10 +227,11 @@ export function DashboardStreamPlayer({
         video={true}
         audio={true}
         connect={true}
+        className="size-full"
       >
         <div className="w-full h-full flex flex-col bg-black">
           <div className="flex-1 min-h-0 relative overflow-hidden">
-            <StreamContent onEndStream={onEndStream} />
+            <StreamContent onEndStream={onEndStream} showChat={showChat} />
           </div>
           <ReactionBar />
         </div>
