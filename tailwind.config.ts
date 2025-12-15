@@ -11,16 +11,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#7f13ec",
-        "background-light": "#f7f6f8",
-        "background-dark": "#191022",
-        surface: "#1F1F23",
-        "surface-secondary": "#2F2F35",
-        accent: "#9146FF",
-        "text-primary": "#EFEFF1",
-        "text-secondary": "#ADADB8",
-        "card-light": "#ffffff",
-        "card-dark": "#2a2a2d",
+        primary: "#9146FF", // Twitch-like purple as primary
+        "background-light": "#F7F7F8",
+        "background-dark": "#0E0E10", // Very dark background
+        "surface-light": "#FFFFFF",
+        "surface-dark": "#18181B", // Slightly lighter for cards/panels
+        "border-light": "#E5E7EB",
+        "border-dark": "#2D2D31",
+        "accent-dark": "#1F1F23",
+        "chat-bg": "rgba(0, 0, 0, 0.6)", // Semi-transparent black for overlay
       },
       fontFamily: {
         display: ["Spline Sans", "sans-serif"],
