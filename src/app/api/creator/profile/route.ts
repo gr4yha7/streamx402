@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
           category: validated.category,
           bio: validated.bio,
           paymentAddress: validated.paymentAddress,
-          socialLinks: validated.socialLinks || null,
+          socialLinks: (validated.socialLinks as any) || null,
         },
       });
     } else {
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
           category: validated.category,
           bio: validated.bio,
           paymentAddress: validated.paymentAddress,
-          socialLinks: validated.socialLinks || null,
+          socialLinks: (validated.socialLinks as any) || null,
         },
       });
 

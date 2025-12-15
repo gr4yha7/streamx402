@@ -23,6 +23,7 @@ export async function GET(
                 paymentAddress: true,
               },
             },
+            walletAddress: true,
           },
         },
       },

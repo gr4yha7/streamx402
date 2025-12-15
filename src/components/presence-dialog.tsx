@@ -193,7 +193,7 @@ export function PresenceDialog({
     (participant) => participant.permissions?.canPublish ?? false
   );
   const viewers = participants.filter(
-    (participant) => !participant.permissions?.canPublish ?? true
+    (participant) => !participant.permissions?.canPublish
   );
 
   return (

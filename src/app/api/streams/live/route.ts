@@ -5,17 +5,17 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const controller = new Controller();
-    
+
     // Get all active LiveKit rooms
-    const rooms = await controller.roomService.listRooms();
-    
+    const rooms = await controller.getRoomService().listRooms();
+
     // Filter only live rooms (rooms with participants)
     const liveRooms = rooms.filter(room => room.numParticipants > 0);
-    
+
     if (liveRooms.length === 0) {
       return NextResponse.json({ streams: [] });
     }
-    
+
     // Fetch stream metadata from database
     const streams = await prisma.stream.findMany({
       where: {
@@ -40,7 +40,7 @@ export async function GET() {
         viewerCount: 'desc',
       },
     });
-    
+
     // Merge LiveKit data with database data
     const enrichedStreams = streams.map(stream => {
       const room = liveRooms.find(r => r.name === stream.roomName);
@@ -65,7 +65,7 @@ export async function GET() {
         startedAt: stream.startedAt,
       };
     });
-    
+
     return NextResponse.json({ streams: enrichedStreams });
   } catch (error) {
     console.error("Error fetching live streams:", error);
