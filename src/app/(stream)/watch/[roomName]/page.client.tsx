@@ -168,6 +168,13 @@ export default function WatchPage({
     fetchStreamAndCheckPayment();
   }, [roomName, isConnected, address]);
 
+  // Redirect to auth if wallet not connected and payment required
+  useEffect(() => {
+    if (streamInfo && streamInfo.paymentRequired && !isConnected && !checkingPayment) {
+      router.push(`/auth?redirect=${encodeURIComponent(`/watch/${roomName}`)}`);
+    }
+  }, [streamInfo, isConnected, checkingPayment, router, roomName]);
+
   const onJoin = async () => {
     // Check payment status again before joining
     if (streamInfo && streamInfo.paymentRequired && (!paymentStatus?.hasAccess)) {
@@ -228,17 +235,10 @@ export default function WatchPage({
     }
   };
 
-  if (checkingPayment || authLoading) {
-    return (
-      <Flex align="center" justify="center" className="min-h-screen">
-        <Spinner />
-      </Flex>
-    );
-  }
+  // Redirect imminent if:
+  const shouldRedirect = streamInfo && streamInfo.paymentRequired && !isConnected && !checkingPayment;
 
-  // Redirect to auth if wallet not connected and payment required
-  if (streamInfo && streamInfo.paymentRequired && !isConnected && !checkingPayment) {
-    router.push(`/auth?redirect=${encodeURIComponent(`/watch/${roomName}`)}`);
+  if (checkingPayment || authLoading || shouldRedirect) {
     return (
       <Flex align="center" justify="center" className="min-h-screen">
         <Spinner />

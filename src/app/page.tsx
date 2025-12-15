@@ -68,11 +68,56 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Real-time stream updates using Server-Sent Events
   useEffect(() => {
-    fetchStreams();
-    // Poll every 10 seconds for updates
-    const interval = setInterval(fetchStreams, 10000);
-    return () => clearInterval(interval);
+    let eventSource: EventSource | null = null;
+
+    const connectSSE = () => {
+      // Build query params for filtering
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      if (selectedCategory && selectedCategory !== "All") params.set("category", selectedCategory);
+
+      const [sortField, sortOrder] = sortBy.includes("-")
+        ? sortBy.split("-")
+        : [sortBy, "desc"];
+      params.set("sortBy", sortField);
+      params.set("sortOrder", sortOrder === "asc" ? "asc" : "desc");
+
+      // If filters are active, use regular API instead of SSE
+      if (debouncedSearch || (selectedCategory && selectedCategory !== "All")) {
+        fetchStreams();
+        return;
+      }
+
+      // Connect to SSE endpoint for real-time updates
+      eventSource = new EventSource("/api/streams/live-updates");
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "streams") {
+            setStreams(data.data || []);
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error("Error parsing SSE data:", error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("SSE connection error:", error);
+        eventSource?.close();
+        // Fallback to regular fetch on error
+        fetchStreams();
+      };
+    };
+
+    connectSSE();
+
+    return () => {
+      eventSource?.close();
+    };
   }, [debouncedSearch, selectedCategory, sortBy]);
 
   const fetchStreams = async () => {

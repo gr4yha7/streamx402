@@ -19,6 +19,7 @@ import { DashboardStreamPlayer } from "@/components/dashboard-stream-player";
 import { Chat } from "@/components/chat";
 import { LiveKitRoom } from "@livekit/components-react";
 import { TokenContext } from "@/components/token-context";
+import { GoLiveDialog } from "@/components/go-live-dialog";
 
 interface AnalyticsData {
   totalViews: number;
@@ -152,7 +153,12 @@ export default function CreatorDashboard() {
     }
   };
 
-  const startStream = async () => {
+  const startStream = async (streamData: {
+    title: string;
+    description?: string;
+    category?: string;
+    price?: number;
+  }) => {
     if (!address || !user) return;
 
     try {
@@ -169,8 +175,10 @@ export default function CreatorDashboard() {
             enable_reactions: true,
             enable_raise_hand: true,
           },
-          title: user.creatorProfile?.defaultStreamTitle || `${user.username}'s Stream`,
-          category: user.creatorProfile?.category || undefined,
+          title: streamData.title,
+          description: streamData.description,
+          category: streamData.category,
+          price: streamData.price,
         }),
       });
 
@@ -480,13 +488,17 @@ export default function CreatorDashboard() {
                       </div>
                     ) : (
                       <div className="text-center">
-                        <button
-                          onClick={startStream}
-                          className="flex items-center justify-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-colors mb-4 mx-auto"
+                        <GoLiveDialog
+                          onGoLive={startStream}
+                          loading={streamLoading}
+                          defaultTitle={user.creatorProfile?.defaultStreamTitle || `${user.username}'s Stream`}
+                          defaultCategory={user.creatorProfile?.category || ""}
                         >
-                          <span className="material-symbols-outlined text-2xl">live_tv</span>
-                          <span className="text-lg">Go Live</span>
-                        </button>
+                          <button className="flex items-center justify-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-colors mb-4 mx-auto">
+                            <span className="material-symbols-outlined text-2xl">live_tv</span>
+                            <span className="text-lg">Go Live</span>
+                          </button>
+                        </GoLiveDialog>
                         <p className="text-white/60 text-sm">Start streaming to your audience</p>
                       </div>
                     )}

@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState, useMemo } from "react";
 import {
   useWallets,
   type UiWallet,
-  type UiWalletAccount
+  type UiWalletAccount,
+  getWalletFeature
 } from "@wallet-standard/react";
 import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import { StandardConnect } from "@wallet-standard/core";
@@ -91,25 +92,41 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
   // Connect to a wallet
   const connect = async (wallet: UiWallet) => {
     try {
-      // Check if wallet supports StandardConnect
-      if (!wallet.features.includes(StandardConnect)) {
-        throw new Error("Wallet does not support connection");
-      }
-
-      // In Wallet Standard, wallets detected by useWallets() that have accounts
-      // are already "connected" - the user has already authorized the wallet extension
-      // We just need to select which wallet/account to use
+      // Check if wallet has accounts (already authorized)
       if (wallet.accounts && wallet.accounts.length > 0) {
-        setSelectedWallet(wallet);
-        setSelectedAccount(wallet.accounts[0]);
+        // Wallet is already connected, just select it
+        setWalletAndAccount(wallet, wallet.accounts[0]);
         return;
       }
 
-      // If the wallet has no accounts, it means the user hasn't connected it yet
-      // In this case, we should show a message asking them to connect via their wallet extension
-      throw new Error(
-        `Please unlock and connect your ${wallet.name} wallet first, then try again.`
-      );
+      // Wallet has no accounts - need to request authorization
+      // Try to use the standard:connect feature if available
+
+
+      const connectFeature = getWalletFeature(wallet, StandardConnect);
+
+      // @ts-ignore
+      if (connectFeature && typeof connectFeature.connect === 'function') {
+        // Request connection/authorization from the wallet
+        // @ts-ignore
+        const result = await connectFeature.connect();
+
+        // After connection, the wallet should have accounts
+        if (result && 'accounts' in result && result.accounts.length > 0) {
+          setWalletAndAccount(wallet, result.accounts[0] as UiWalletAccount);
+        } else if (wallet.accounts && wallet.accounts.length > 0) {
+          // Fallback: check wallet.accounts directly
+          setWalletAndAccount(wallet, wallet.accounts[0]);
+        } else {
+          throw new Error("Wallet connection succeeded but no accounts were returned");
+        }
+      } else {
+        // Wallet doesn't support standard:connect
+        // Guide user to connect via their wallet extension
+        throw new Error(
+          `Please open your ${wallet.name} wallet extension and connect to this site, then try again.`
+        );
+      }
     } catch (error) {
       console.error("Failed to connect wallet:", error);
       throw error;
