@@ -129,7 +129,8 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Failed to connect wallet:", error);
-      throw error;
+      // Do not throw, as this crashes the UI. Just log it.
+      // throw error;
     }
   };
 

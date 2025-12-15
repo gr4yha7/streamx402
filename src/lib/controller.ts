@@ -117,6 +117,10 @@ export class Controller {
     );
   }
 
+  public getRoomService(): RoomServiceClient {
+    return this.roomService;
+  }
+
   async createIngress({
     metadata,
     room_name,
@@ -243,10 +247,17 @@ export class Controller {
     }
 
     const room = rooms[0];
-    const metadata = JSON.parse(room.metadata) as RoomMetadata;
-    const creator_identity = metadata.creator_identity;
+    let creator_identity = "";
+    try {
+      if (room.metadata) {
+        const metadata = JSON.parse(room.metadata) as RoomMetadata;
+        creator_identity = metadata.creator_identity;
+      }
+    } catch (e) {
+      console.warn("Failed to parse room metadata:", e);
+    }
 
-    if (creator_identity !== session.identity) {
+    if (creator_identity && creator_identity !== session.identity) {
       throw new Error("Only the creator can end the stream");
     }
 
@@ -262,7 +273,7 @@ export class Controller {
     try {
       await this.roomService.getParticipant(room_name, identity);
       exists = true;
-    } catch {}
+    } catch { }
 
     if (exists) {
       throw new Error("Participant already exists");

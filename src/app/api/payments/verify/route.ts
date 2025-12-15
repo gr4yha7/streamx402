@@ -7,6 +7,8 @@ const verifyPaymentSchema = z.object({
   streamId: z.string().uuid(),
   transactionHash: z.string(),
   amount: z.number().min(0),
+  asset: z.string().optional().default("USDC"),
+  network: z.string().optional().default(SOLANA_DEVNET_NETWORK),
 });
 
 export async function POST(req: NextRequest) {
@@ -58,16 +60,24 @@ export async function POST(req: NextRequest) {
     if (existingPayment) {
       return NextResponse.json({
         success: true,
-        payment: existingPayment,
+        payment: {
+          ...existingPayment,
+          amountAtomic: existingPayment.amountAtomic.toString(),
+        },
         message: "Payment already verified",
       });
     }
 
-    // Verify transaction on Solana (in production, you'd verify on-chain)
-    // For now, we'll trust the transaction hash and create the payment record
-    // TODO: Add actual Solana transaction verification
-
-    const amountAtomic = Math.floor(validated.amount * 1_000_000); // USDC has 6 decimals
+    // Determine decimals based on asset
+    let amountAtomic: number;
+    if (validated.asset === "USDC") {
+      amountAtomic = Math.floor(validated.amount * 1_000_000);
+    } else if (validated.asset === "SOL") {
+      amountAtomic = Math.floor(validated.amount * 1_000_000_000);
+    } else {
+      // fallback default
+      amountAtomic = Math.floor(validated.amount * 1_000_000);
+    }
 
     // Create payment record
     const payment = await prisma.payment.create({
@@ -78,9 +88,9 @@ export async function POST(req: NextRequest) {
         amount: validated.amount,
         amountAtomic: BigInt(amountAtomic),
         transactionHash: validated.transactionHash,
-        network: SOLANA_DEVNET_NETWORK,
-        asset: "USDC",
-        assetMint: USDC_DEVNET_MINT,
+        network: validated.network,
+        asset: validated.asset,
+        assetMint: validated.asset === "USDC" ? USDC_DEVNET_MINT : "So11111111111111111111111111111111111111112",
         status: "completed",
       },
     });
@@ -119,15 +129,20 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Payment verification validation error:", error.issues);
       return NextResponse.json(
         { error: "Invalid input", details: error.issues },
         { status: 400 }
       );
     }
 
-    console.error("Payment verification error:", error);
+    console.error("Payment verification failed:", error);
+    // Log helpful details if available
+    if ((error as any).code) console.error("Error code:", (error as any).code);
+    if ((error as any).meta) console.error("Error meta:", (error as any).meta);
+
     return NextResponse.json(
-      { error: "Failed to verify payment" },
+      { error: "Failed to verify payment", details: (error as any).message },
       { status: 500 }
     );
   }

@@ -20,16 +20,14 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useSolana } from "@/components/solana-provider";
-// import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
-import { x402Client, wrapFetchWithPayment, x402HTTPClient } from "@x402/fetch";
-import { ExactSvmScheme } from "@x402/svm/exact/client";
-// import { type Provider } from "@reown/appkit-adapter-solana/react";
+import { wrapFetchWithPayment, decodeXPaymentResponse } from "x402-fetch";
+// import { ExactSvmScheme } from "@x402/svm/exact/client"; // Removed
 import { useWalletAccountTransactionSendingSigner } from "@solana/react";
-// import { base58 } from "@scure/base";
+import { UiWalletAccount } from "@wallet-standard/react";
 
 interface StreamInfo {
   id: string;
@@ -51,6 +49,7 @@ export default function WatchPage({
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { address, isConnected, chain, selectedAccount } = useSolana();
+
   const [name, setName] = useState("");
   const [authToken, setAuthToken] = useState("");
   const [roomToken, setRoomToken] = useState("");
@@ -64,53 +63,17 @@ export default function WatchPage({
   const [checkingPayment, setCheckingPayment] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // const { walletProvider } = useAppKitProvider<Provider>('solana')
-  // 64-byte base58 secret key (private + public)
-  // const svmSigner = await createKeyPairSignerFromBytes(
-  //   base58.decode(walletProvider.publicKey)
-  // );
+  // Move hook to top level. Note: chain usually requires a cluster ('devnet'), but here it is passed as is.
+  // The hook crashes if selectedAccount is null (accesses .chains), so we pass a dummy object.
+  const dummyAccount = useMemo(() => ({
+    chains: [chain],
+    features: ['solana:signAndSendTransaction'],
+    address: ''
+  } as any), [chain]);
+  const rawSvmSigner = useWalletAccountTransactionSendingSigner(selectedAccount || dummyAccount, chain);
 
-
-  useEffect(() => {
-    const checkPayment = async () => {
-      if (selectedAccount) {
-        const svmSigner = useWalletAccountTransactionSendingSigner(selectedAccount!, chain);
-
-        const client = new x402Client()
-          .register("solana:*", new ExactSvmScheme(svmSigner))
-          .onBeforePaymentCreation(async context => {
-            console.log("Creating payment for:", context.selectedRequirements);
-            // Abort payment by returning: { abort: true, reason: "Not allowed" }
-          })
-          .onAfterPaymentCreation(async context => {
-            console.log("Payment created:", context.paymentPayload.x402Version);
-            // Send to analytics, database, etc.
-          })
-          .onPaymentCreationFailure(async context => {
-            console.error("Payment failed:", context.error);
-            // Recover by returning: { recovered: true, payload: alternativePayload }
-          });
-        const fetchWithPayment = wrapFetchWithPayment(fetch, client);
-        const response = await fetchWithPayment(`/api/streams/payment-status`, {
-          method: "GET",
-        });
-
-        const body = await response.json();
-        console.log("Response:", body);
-
-        // Get payment receipt from response headers
-        if (response.ok) {
-          const httpClient = new x402HTTPClient(client);
-          const paymentResponse = httpClient.getPaymentSettleResponse(
-            (name) => response.headers.get(name)
-          );
-          console.log("Payment settled:", paymentResponse);
-        }
-      }
-    }
-    checkPayment();
-  }, [selectedAccount])
-
+  // Return null if we are using the dummy account, otherwise the signer
+  const svmSigner = selectedAccount ? rawSvmSigner : null;
 
   // Fetch stream info and check payment status
   useEffect(() => {
@@ -130,35 +93,77 @@ export default function WatchPage({
           return;
         }
 
-        // Check payment status if wallet is connected
-        if (isConnected && address && streamData) {
-          const paymentRes = await fetch(`/api/streams/${streamData.id}/payment-status`, {
-            headers: {
-              "X-Wallet-Address": address,
-            },
-          });
+        if (streamData && isConnected && address && selectedAccount) {
+          try {
+            // console.log("x402-fetch exports:", x402Fetch);
+            // fallback to direct passing for now while debugging
+            const fetchWithPayment = wrapFetchWithPayment(fetch, svmSigner as any, BigInt(100_000_000));
 
-          if (paymentRes.ok) {
-            const paymentData = await paymentRes.json();
-            setPaymentStatus(paymentData);
+            // Construct URL with price and creator address parameters for dynamic payment requirements
+            const queryParams = new URLSearchParams({
+              price: (streamData.price || 0).toString(),
+              creatorAddress: streamData.creator.paymentAddress
+            });
 
-            // Show payment modal if payment is required
-            if (!paymentData.hasAccess && paymentData.paymentRequired) {
+            // Note: wrapFetchWithPayment handles the 402/payment flow internally via the interceptor
+            // We just need to handle the success or final failure
+            const response = await fetchWithPayment(`/api/streams/${streamData.id}/payment-status?${queryParams.toString()}`, {
+              method: "GET",
+              headers: {
+                "X-Wallet-Address": address
+              }
+            });
+
+            console.log("X402: Response:", response);
+
+            if (response.ok) {
+              const paymentData = await response.json();
+              setPaymentStatus(paymentData);
+
+              const xPaymentResponseHeader = response.headers.get("x-payment-response");
+              if (xPaymentResponseHeader) {
+                try {
+                  const paymentResponse = decodeXPaymentResponse(xPaymentResponseHeader);
+                  console.log("X402: Payment settled:", paymentResponse);
+                } catch (e) {
+                  console.error("X402: Error decoding payment response", e);
+                }
+              }
+
+            } else if (response.status === 402) {
+              console.log("X402: Payment required - modal trigger (if manual handling needed)");
+              // The library should have handled the payment prompt. 
+              // If it returns 402 here, it means the user cancelled or it failed.
+              setPaymentStatus({
+                hasAccess: false,
+                paymentRequired: true,
+                price: streamData.price || 0
+              });
               setShowPaymentModal(true);
             }
-          }
-        } else if (streamData) {
-          // No wallet connected - show payment modal if payment required
-          if (streamData.paymentRequired) {
-            setShowPaymentModal(true);
+
+          } catch (error: any) {
+            console.error("X402 flow error:", error);
+            if (error.cause) {
+              console.error("X402 flow error cause:", error.cause);
+            }
+            if (error.logs) {
+              console.error("X402 flow error logs:", error.logs);
+            }
+            // Fallback to "need payment" if something crashes
             setPaymentStatus({ hasAccess: false, paymentRequired: true, price: streamData.price || 0 });
-          } else {
-            setPaymentStatus({ hasAccess: true, paymentRequired: false });
           }
+        } else if (streamData && streamData.paymentRequired) {
+          // No wallet connected or not fully auth'd
+          setPaymentStatus({ hasAccess: false, paymentRequired: true, price: streamData.price || 0 });
+          setShowPaymentModal(true);
+        } else {
+          // Free stream or fallback
+          setPaymentStatus({ hasAccess: true, paymentRequired: false });
         }
+
       } catch (error) {
         console.error("Error checking payment status:", error);
-        // Allow access on error (fail open)
         setPaymentStatus({ hasAccess: true, paymentRequired: false });
       } finally {
         setCheckingPayment(false);
@@ -166,9 +171,7 @@ export default function WatchPage({
     };
 
     fetchStreamAndCheckPayment();
-  }, [roomName, isConnected, address]);
-
-  // Redirect to auth if wallet not connected and payment required
+  }, [roomName, isConnected, address, selectedAccount, chain]);
   useEffect(() => {
     if (streamInfo && streamInfo.paymentRequired && !isConnected && !checkingPayment) {
       router.push(`/auth?redirect=${encodeURIComponent(`/watch/${roomName}`)}`);

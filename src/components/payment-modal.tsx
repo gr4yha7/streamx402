@@ -47,7 +47,7 @@ export function PaymentModal({
     try {
       // Get payment requirements from server
       const requirements = createStreamPaymentRequirements(price, creatorAddress);
-
+      // TODO: Integrate with x402 payment flow
       // In a production environment, this would integrate with x402 payment flow
       // For now, we'll use a simplified approach where the user confirms payment
       // and we create a payment record that can be verified later
@@ -161,7 +161,7 @@ export function PaymentModal({
               </div>
               <div className="p-4 bg-white/5 rounded-lg">
                 <p className="text-sm text-white/60 mb-2">Amount</p>
-                <p className="text-white font-bold text-xl">{price.toFixed(2)} USDC</p>
+                <p className="text-white font-bold text-xl">${price.toFixed(2)}</p>
               </div>
               {address && (
                 <div className="p-4 bg-white/5 rounded-lg">
