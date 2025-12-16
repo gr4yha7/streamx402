@@ -1,8 +1,7 @@
 "use client";
 
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useState, useEffect } from "react";
-import { useSolana } from "@/components/solana-provider";
-
 interface StreamMetadataFormProps {
   streamId?: string;
   roomName?: string;
@@ -43,7 +42,8 @@ export function StreamMetadataForm({
   onSubmit,
   onCancel,
 }: StreamMetadataFormProps) {
-  const { address } = useSolana();
+  const { publicKey } = useWallet();
+  const address = publicKey?.toBase58();
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [category, setCategory] = useState(initialData?.category || "");

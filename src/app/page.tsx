@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSolana } from "@/components/solana-provider";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useAuth } from "@/contexts/auth-context";
 import { HeaderAuth } from "@/components/header-auth";
-import { BroadcastDialog } from "@/components/broadcast-dialog";
+// import { BroadcastDialog } from "@/components/broadcast-dialog";
 
 interface Stream {
   id: string;
@@ -51,7 +51,8 @@ const SORT_OPTIONS = [
 ];
 
 export default function HomePage() {
-  const { address } = useSolana();
+  const { publicKey } = useWallet();
+  const address = publicKey?.toBase58();
   const { user } = useAuth();
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,7 +190,8 @@ export default function HomePage() {
                 </select>
               </div>
             </div>
-            <nav className="flex flex-col gap-2">
+            {/* TODO: Add recommended channels/creators */}
+            {/* <nav className="flex flex-col gap-2">
               <a className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/30" href="#">
                 <span className="material-symbols-outlined text-white fill">favorite</span>
                 <p className="text-white text-sm font-medium leading-normal">Following</p>
@@ -229,9 +231,9 @@ export default function HomePage() {
                   <p className="text-white text-sm font-medium leading-normal truncate">xGamerPro</p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
-          <div className="flex flex-col gap-1">
+          {/* <div className="flex flex-col gap-1">
             {user?.isCreator && (
               <BroadcastDialog>
                 <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] mb-2">
@@ -246,7 +248,7 @@ export default function HomePage() {
             >
               <span className="truncate">{user?.isCreator ? "Setup" : "Become Creator"}</span>
             </Link>
-          </div>
+          </div> */}
         </aside>
         {/* Main Content */}
         <div className="flex flex-1 flex-col">
@@ -319,76 +321,6 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-white/60">No live streams at the moment</p>
-              </div>
-            )}
-            {/* SectionHeader */}
-            <h2 className="text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
-              {streams.length > 0 ? "Live Channels We Think You'll Like" : "All Streams"}
-            </h2>
-            {/* ImageGrid */}
-            {loading ? (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6 p-4">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="flex flex-col gap-3 animate-pulse">
-                    <div className="w-full aspect-video bg-[#261933] rounded-lg"></div>
-                    <div className="h-4 bg-[#261933] rounded w-3/4"></div>
-                    <div className="h-3 bg-[#261933] rounded w-1/2"></div>
-                  </div>
-                ))}
-              </div>
-            ) : streams.length > 0 ? (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6 p-4">
-                {streams.map((stream) => {
-                  const gradientClasses = [
-                    "from-blue-600 to-purple-600",
-                    "from-pink-600 to-red-600",
-                    "from-yellow-600 to-orange-600",
-                    "from-green-600 to-teal-600",
-                    "from-indigo-600 to-purple-600",
-                    "from-red-600 to-pink-600",
-                  ];
-                  const gradient = gradientClasses[streams.indexOf(stream) % gradientClasses.length];
-
-                  return (
-                    <Link key={stream.id} href={`/watch/${stream.roomName}`} className="flex flex-col gap-3 group">
-                      <div className="relative w-full aspect-video rounded-lg overflow-hidden">
-                        {stream.thumbnail ? (
-                          <img
-                            src={stream.thumbnail}
-                            alt={stream.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                        ) : (
-                          <div className={`w-full h-full bg-gradient-to-br ${gradient}`}></div>
-                        )}
-                        <div className="absolute top-2 left-2 flex items-center gap-2">
-                          <div className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded">LIVE</div>
-                          <div className="bg-black/50 text-white text-xs px-2 py-0.5 rounded">{stream.viewerCount} viewers</div>
-                        </div>
-                        {stream.paymentRequired && (
-                          <div className="absolute top-2 right-2 bg-primary/90 text-white text-xs font-bold px-2 py-0.5 rounded">
-                            {stream.price} USDC
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-white text-base font-medium leading-normal group-hover:text-primary transition-colors">
-                          {stream.title}
-                        </p>
-                        <p className="text-[#ad92c9] text-sm font-normal leading-normal">
-                          {stream.category || "Uncategorized"}
-                        </p>
-                        <p className="text-[#ad92c9] text-sm font-normal leading-normal">
-                          {stream.creator.channelName} • {stream.viewerCount.toLocaleString()} viewers
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 px-4">

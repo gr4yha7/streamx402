@@ -1,10 +1,11 @@
 "use client";
 
-import { useSolana } from "@/components/solana-provider";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useState, useRef, useEffect } from "react";
 
 export function WalletAccountButton() {
-  const { address, isConnected, disconnect } = useSolana();
+  const { publicKey, connected: isConnected, disconnect } = useWallet();
+  const address = publicKey?.toBase58();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 

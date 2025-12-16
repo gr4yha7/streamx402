@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { useSolana } from "@/components/solana-provider";
 import {
   LineChart,
   Line,
@@ -20,6 +19,7 @@ import { Chat } from "@/components/chat";
 import { LiveKitRoom } from "@livekit/components-react";
 import { TokenContext } from "@/components/token-context";
 import { GoLiveDialog } from "@/components/go-live-dialog";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 interface AnalyticsData {
   totalViews: number;
@@ -57,7 +57,8 @@ interface EarningsData {
 
 export default function CreatorDashboard() {
   const { user, isLoading: authLoading, refreshUser } = useAuth();
-  const { address, isConnected } = useSolana();
+  const { publicKey, connected: isConnected } = useWallet();
+  const address = publicKey?.toBase58();
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalViews: 0,
     totalEarnings: 0,
@@ -454,8 +455,6 @@ export default function CreatorDashboard() {
                     </div>
                   ) : (
                     <div className="text-center z-10">
-                      <div className="w-16 h-16 border-4 border-t-primary border-gray-600 rounded-full animate-spin mb-4 mx-auto"></div>
-                      <p className="text-gray-400 font-medium mb-1">Connecting to room...</p>
                       <p className="text-gray-500 text-sm mb-6">Start your camera to begin streaming</p>
 
                       <div className="flex justify-center gap-4 mb-8">
@@ -487,7 +486,7 @@ export default function CreatorDashboard() {
           </div>
 
           {/* Stats - Fixed height bottom row */}
-          <div className="grid grid-cols-4 gap-4 h-24 shrink-0">
+          {/* <div className="grid grid-cols-4 gap-4 h-24 shrink-0">
             <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg p-4 flex flex-col justify-between">
               <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Views</span>
               <div className="flex items-end justify-between">
@@ -509,12 +508,11 @@ export default function CreatorDashboard() {
               </div>
             </div>
             <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg p-4 flex flex-col justify-between">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Followers</span>
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</span>
               <div className="flex items-end justify-between">
-                <span className="text-2xl font-bold dark:text-white">892</span>
+                <span className="text-2xl font-bold dark:text-white">00:48</span>
                 <div className="flex items-center text-xs text-green-400 gap-1">
-                  <span className="material-symbols-outlined text-sm">arrow_upward</span>
-                  +12%
+                  <span className="material-symbols-outlined text-sm">access_alarm</span>
                 </div>
               </div>
             </div>
@@ -528,7 +526,7 @@ export default function CreatorDashboard() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
         {/* Closing main tag removed from original, will be closed by existing code or next replacement */}
         {/* Charts Section */}

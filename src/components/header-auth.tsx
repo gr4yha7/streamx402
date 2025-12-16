@@ -1,15 +1,16 @@
 "use client";
 
 import { useAuth } from "@/contexts/auth-context";
-import { useSolana } from "@/components/solana-provider";
 import { WalletConnectButton } from "./wallet-connect-button";
 import { WalletAccountButton } from "./wallet-account-button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export function HeaderAuth() {
   const { user, isLoading: authLoading } = useAuth();
-  const { address, isConnected } = useSolana();
+  const { publicKey, connected: isConnected } = useWallet();
+  const address = publicKey?.toBase58();
   const router = useRouter();
 
   if (authLoading) {
@@ -49,17 +50,21 @@ export function HeaderAuth() {
         )}
         <div className="flex items-center gap-3">
           <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 bg-gradient-to-br from-purple-500 to-pink-500">
-            {user.avatar && (
+            {user.avatar ? (
               <img
                 src={user.avatar}
                 alt={user.username}
                 className="w-full h-full rounded-full object-cover"
               />
+            ) : (
+              <></>
+              // TODO: import lucide react user icon
+              // <UserIcon />
             )}
           </div>
           <div className="flex flex-col text-right">
             <p className="text-white text-sm font-medium">{user.username}</p>
-            <p className="text-gray-400 text-xs">{user.isCreator ? "Creator" : "Viewer"}</p>
+            {/* <p className="text-gray-400 text-xs">{user.isCreator ? "Creator" : "Viewer"}</p> */}
           </div>
         </div>
         <WalletAccountButton />

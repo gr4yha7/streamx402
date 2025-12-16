@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { useSolana } from "@/components/solana-provider";
 import { HeaderAuth } from "@/components/header-auth";
 import Link from "next/link";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 const CATEGORIES = [
   "Gaming",
@@ -23,7 +23,8 @@ const CATEGORIES = [
 export default function CreatorChannelSetup() {
   const router = useRouter();
   const { user, isLoading: authLoading, refreshUser } = useAuth();
-  const { address, isConnected } = useSolana();
+  const { publicKey, connected: isConnected } = useWallet();
+  const address = publicKey?.toBase58();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

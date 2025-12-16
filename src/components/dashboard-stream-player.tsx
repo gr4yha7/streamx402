@@ -78,14 +78,13 @@ function StreamContent({ onEndStream, showChat }: { onEndStream?: () => void; sh
           <div className="text-center text-white">
             <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
             <p className="font-medium text-gray-400">Connecting to room...</p>
-            <p className="text-sm text-gray-500 mt-1">Start your camera to begin streaming</p>
           </div>
         </div>
       )}
 
       {/* Creator's Video (only show local participant's video) */}
       <div className="w-full h-full">
-        {localCameraTracks.length > 0 ? (
+        {localCameraTracks.length > 0 && (
           <div className="w-full h-full relative">
             {localCameraTracks.map((track) => (
               <VideoTrack
@@ -94,25 +93,6 @@ function StreamContent({ onEndStream, showChat }: { onEndStream?: () => void; sh
                 className="w-full h-full object-cover"
               />
             ))}
-          </div>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-zinc-900">
-            <div className="text-center text-gray-400">
-              <div className="w-16 h-16 border-4 border-t-primary border-gray-600 rounded-full animate-spin mb-4 mx-auto"></div>
-              <p className="font-medium">Waiting for video...</p>
-              <p className="text-sm mt-1">Start your camera to begin streaming</p>
-
-              <div className="mt-8 flex gap-6 justify-center">
-                <div className="flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                  <span className="material-symbols-outlined text-3xl">videocam_off</span>
-                  <span className="text-xs">Camera</span>
-                </div>
-                <div className="flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                  <span className="material-symbols-outlined text-3xl">mic_off</span>
-                  <span className="text-xs">Mic</span>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>
@@ -163,16 +143,12 @@ function StreamContent({ onEndStream, showChat }: { onEndStream?: () => void; sh
             <TrackToggle
               source={Track.Source.Camera}
               className="bg-white/10 hover:bg-white/20 text-white rounded-lg p-3 transition-colors"
-            >
-              <span className="material-symbols-outlined">videocam</span>
-            </TrackToggle>
+            />
 
             <TrackToggle
               source={Track.Source.Microphone}
               className="bg-white/10 hover:bg-white/20 text-white rounded-lg p-3 transition-colors"
-            >
-              <span className="material-symbols-outlined">mic</span>
-            </TrackToggle>
+            />
 
             {onEndStream && (
               <button
@@ -182,7 +158,7 @@ function StreamContent({ onEndStream, showChat }: { onEndStream?: () => void; sh
                 }}
                 className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-4 py-3 transition-colors flex items-center gap-2 font-medium"
               >
-                <span className="material-symbols-outlined text-lg">stop</span>
+                <span className="material-symbols-outlined text-lg">stop_circle</span>
                 <span className="hidden sm:inline">End Stream</span>
               </button>
             )}

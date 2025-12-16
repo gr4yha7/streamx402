@@ -4,14 +4,15 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { useSolana } from "@/components/solana-provider";
 import { WalletConnectButton } from "@/components/wallet-connect-button";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, signUp, signIn, isLoading } = useAuth();
-  const { address, isConnected } = useSolana();
+  const { publicKey, connected: isConnected } = useWallet();
+  const address = publicKey?.toBase58();
   const [isSignUp, setIsSignUp] = useState(true);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");

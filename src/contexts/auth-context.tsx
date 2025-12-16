@@ -1,8 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { useSolana } from "@/components/solana-provider";
-
+import { useWallet } from "@solana/wallet-adapter-react";
 interface User {
   id: string;
   walletAddress: string;
@@ -33,7 +32,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { address, isConnected, disconnect } = useSolana();
+  const { publicKey, connected: isConnected, disconnect } = useWallet();
+  const address = publicKey?.toBase58();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

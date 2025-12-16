@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSolana } from "@/components/solana-provider";
+import { useState, useEffect, useMemo } from "react";
 import { WalletConnectButton } from "./wallet-connect-button";
-import { createStreamPaymentRequirements } from "@/lib/x402-constants";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -24,8 +23,8 @@ export function PaymentModal({
   creatorAddress,
   onPaymentSuccess
 }: PaymentModalProps) {
-  const { address, isConnected } = useSolana();
-  const [step, setStep] = useState(1);
+  const { publicKey, connected: isConnected } = useWallet();
+  const address = publicKey?.toBase58();  const [step, setStep] = useState(1);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,55 +42,6 @@ export function PaymentModal({
 
     setProcessing(true);
     setError(null);
-
-    try {
-      // Get payment requirements from server
-      const requirements = createStreamPaymentRequirements(price, creatorAddress);
-      // TODO: Integrate with x402 payment flow
-      // In a production environment, this would integrate with x402 payment flow
-      // For now, we'll use a simplified approach where the user confirms payment
-      // and we create a payment record that can be verified later
-
-      // Note: In production, x402 middleware would handle the actual payment
-      // The flow would be:
-      // 1. Client requests protected resource
-      // 2. Server returns 402 Payment Required with payment requirements
-      // 3. Client initiates payment via wallet
-      // 4. Client retries request with payment proof
-      // 5. Server verifies payment and grants access
-
-      // For development, we'll create a payment record that needs to be verified
-      // In production, this would be handled by x402 middleware automatically
-      const response = await fetch("/api/payments/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Wallet-Address": address,
-        },
-        body: JSON.stringify({
-          streamId,
-          transactionHash: `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          amount: price,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (onPaymentSuccess && result.payment?.transactionHash) {
-          onPaymentSuccess(result.payment.transactionHash);
-        } else {
-          onClose();
-        }
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Payment verification failed");
-      }
-    } catch (err) {
-      console.error("Payment error:", err);
-      setError(err instanceof Error ? err.message : "Payment failed. Please try again.");
-    } finally {
-      setProcessing(false);
-    }
   };
 
   if (!isOpen) return null;
