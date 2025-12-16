@@ -23,11 +23,13 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { useSolana } from "@/components/solana-provider";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { wrapFetchWithPayment, decodeXPaymentResponse } from "x402-fetch";
 // import { ExactSvmScheme } from "@x402/svm/exact/client"; // Removed
 import { useWalletAccountTransactionSendingSigner } from "@solana/react";
 import { UiWalletAccount } from "@wallet-standard/react";
+import { createKeyPairSignerFromBytes } from "@solana/kit";
+import { base58 } from "@scure/base";
 
 interface StreamInfo {
   id: string;
@@ -48,8 +50,8 @@ export default function WatchPage({
 }) {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { address, isConnected, chain, selectedAccount } = useSolana();
-
+  const { publicKey, connected: isConnected } = useWallet();
+  const address = publicKey?.toBase58();
   const [name, setName] = useState("");
   const [authToken, setAuthToken] = useState("");
   const [roomToken, setRoomToken] = useState("");
@@ -63,22 +65,15 @@ export default function WatchPage({
   const [checkingPayment, setCheckingPayment] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // Move hook to top level. Note: chain usually requires a cluster ('devnet'), but here it is passed as is.
-  // The hook crashes if selectedAccount is null (accesses .chains), so we pass a dummy object.
-  const dummyAccount = useMemo(() => ({
-    chains: [chain],
-    features: ['solana:signAndSendTransaction'],
-    address: ''
-  } as any), [chain]);
-  const rawSvmSigner = useWalletAccountTransactionSendingSigner(selectedAccount || dummyAccount, chain);
-
-  // Return null if we are using the dummy account, otherwise the signer
-  const svmSigner = selectedAccount ? rawSvmSigner : null;
-
   // Fetch stream info and check payment status
   useEffect(() => {
     const fetchStreamAndCheckPayment = async () => {
       try {
+        // 64-byte base58 secret key (private + public)
+        const signer = await createKeyPairSignerFromBytes(
+          base58.decode(process.env.NEXT_PUBLIC_SOLANA_PRIVATE_KEY!)
+        );
+        const svmSigner = signer as any;
         // Fetch stream info
         const streamRes = await fetch(`/api/streams/by-room/${encodeURIComponent(roomName)}`);
         let streamData: StreamInfo | null = null;
@@ -93,7 +88,7 @@ export default function WatchPage({
           return;
         }
 
-        if (streamData && isConnected && address && selectedAccount) {
+        if (streamData && isConnected && address) {
           try {
             // console.log("x402-fetch exports:", x402Fetch);
             // fallback to direct passing for now while debugging
@@ -171,7 +166,7 @@ export default function WatchPage({
     };
 
     fetchStreamAndCheckPayment();
-  }, [roomName, isConnected, address, selectedAccount, chain]);
+  }, [roomName, isConnected, address]);
   useEffect(() => {
     if (streamInfo && streamInfo.paymentRequired && !isConnected && !checkingPayment) {
       router.push(`/auth?redirect=${encodeURIComponent(`/watch/${roomName}`)}`);
